@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using AdmissionSystem.Api.Common;
 using AdmissionSystem.Api.Data;
 using AdmissionSystem.Api.Middleware;
+using AdmissionSystem.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseNpgsql(connectionString);
 });
+
+// Register Domain & Background Services
+builder.Services.AddScoped<IAdmissionService, AdmissionService>();
+builder.Services.AddHostedService<HoldExpiryBackgroundService>();
 
 // Controllers and JSON configuration with camelCase
 builder.Services.AddControllers()
@@ -34,14 +39,18 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger / OpenAPI
+// Swagger / OpenAPI with X-Student-Id parameter support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "School Admission System API", Version = "v1" });
+    c.OperationFilter<RequireStudentIdOperationFilter>();
 });
 
 var app = builder.Build();
+
+// Global unhandled exception handler
+app.UseGlobalExceptionHandler();
 
 // Swagger in development
 if (app.Environment.IsDevelopment())
